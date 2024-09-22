@@ -17,7 +17,7 @@ Ansible Real world playbook for Installation, Update and Deploy Container for Ap
 
 
 ### Playbook for Installation of Applications:
-| Application    					| Code Link  				 |
+| Application    					| Playbook Link				 |
 | ---------------------------------	| ---------------------------|
 | 1. Installation Docker 			| [Code](./instl-docker.yml) |
 | 2. Installation Java 				| [Code](./instl-docker.yml) |
@@ -27,11 +27,11 @@ Ansible Real world playbook for Installation, Update and Deploy Container for Ap
 | 6. Installation Tomcat 			| [Code](./instl-tomcat.yml) |
 
 ### Playbook for Deploy Container for Applications:
-| Application    					| Code Link  				 |
+| Application    					| Playbook Link  				 |
 | ---------------------------------	| ---------------------------|
-| 1. Deploy Container for Tomcat 	| [Code](./deploy-webapp-tomcat.yml) |
+| 1. Deploy Container for Tomcat            | [Code](./deploy-webapp-tomcat.yml) |
 
 ### Playbook for Update Application:
-| Application    					| Code Link  				 |
-| ---------------------------------	| ---------------------------|
-| 1. Update Java version 			| [Code](./update-java-versions.yml) |
+| Application    					         | Playbook Link  				 |
+| ---------------------------------	         | ---------------------------|
+| 1. Update Java version                     | [Code](./update-java-versions.yml) |
