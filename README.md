@@ -14,3 +14,4 @@ Ansible Real world playbook for Installation, Update and Deploy Container for Ap
 
 ### Playbook for Update Application:
 1. Update Java version       [Code](./update-java-versions.yml)
+2. Update Tomcat version       [Code](./update-tomcat-version.yml)
