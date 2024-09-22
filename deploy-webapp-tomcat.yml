@@ -1,0 +1,27 @@
+---
+- name: Deploy Tomcat Container
+  hosts: localhost
+  
+  tasks:
+    - name: Pull the official Tomcat Docker image
+      docker_image:
+        name: tomcat
+        tag: latest
+        source: pull
+
+    - name: Run a Tomcat container
+      docker_container:
+        name: tomcat_container
+        image: tomcat:latest
+        state: started
+        ports:
+          - "8080:8080"
+        volumes:
+          - /opt/tomcat/webapps:/usr/local/tomcat/webapps
+
+    - name: Copy WAR file to Tomcat container
+      copy:
+        src: /path/to/your/application.war
+        dest: /opt/tomcat/webapps/application.war
+      become: yes
+      delegate_to: localhost
