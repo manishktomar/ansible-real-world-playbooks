@@ -1,0 +1,86 @@
+---
+- name: Upgrade Tomcat from 9.0.95 to 10.1.30
+  hosts: all
+  become: yes
+  vars:
+    tomcat_old_version: 9.0.95               # Current Tomcat version
+    tomcat_new_version: 10.1.30              # New Tomcat version to upgrade to
+    tomcat_user: "tomcat"                    # Tomcat user
+    tomcat_group: "tomcat"                   # Tomcat group
+    tomcat_home: "/opt/tomcat"               # Tomcat installation directory
+    tomcat_backup_dir: "/opt/tomcat_backup"  # Directory to backup old Tomcat
+    tomcat_service_name: "tomcat"            # Tomcat service name
+
+  tasks:
+    - name: Ensure required packages are installed
+      apt:
+        name: 
+          - wget
+          - unzip
+        state: present
+        update_cache: yes
+
+    - name: Stop existing Tomcat service
+      service:
+        name: "{{ tomcat_service_name }}"
+        state: stopped
+
+    - name: Backup current Tomcat installation
+      command: mv {{ tomcat_home }} {{ tomcat_backup_dir }}_{{ tomcat_old_version }}
+      when: 
+        - tomcat_backup_dir is not none
+        - tomcat_old_version is not none
+
+    - name: Download Tomcat 10.1.30
+      get_url:
+        url: "https://dlcdn.apache.org/tomcat/tomcat-10/v{{ tomcat_new_version }}/bin/apache-tomcat-{{ tomcat_new_version }}.tar.gz"
+        dest: /tmp/apache-tomcat-{{ tomcat_new_version }}.tar.gz
+
+    - name: Create new Tomcat directory
+      file:
+        path: "{{ tomcat_home }}"
+        state: directory
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+
+    - name: Extract Tomcat 10 archive
+      unarchive:
+        src: /tmp/apache-tomcat-{{ tomcat_new_version }}.tar.gz
+        dest: "{{ tomcat_home }}"
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Set permissions on Tomcat directory
+      file:
+        path: "{{ tomcat_home }}"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        recurse: yes
+
+    - name: Copy over configuration from the old version
+      copy:
+        src: "{{ tomcat_backup_dir }}_{{ tomcat_old_version }}/conf/"
+        dest: "{{ tomcat_home }}/conf/"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        mode: '0644'
+        force: yes
+
+    - name: Copy over webapps and logs (optional)
+      copy:
+        src: "{{ tomcat_backup_dir }}_{{ tomcat_old_version }}/webapps/"
+        dest: "{{ tomcat_home }}/webapps/"
+        owner: "{{ tomcat_user }}"
+        group: "{{ tomcat_group }}"
+        mode: '0644'
+        force: yes
+
+    - name: Start new Tomcat service
+      service:
+        name: "{{ tomcat_service_name }}"
+        state: started
+
+    - name: Enable Tomcat to start on boot
+      service:
+        name: "{{ tomcat_service_name }}"
+        enabled: yes
