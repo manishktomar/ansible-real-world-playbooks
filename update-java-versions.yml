@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    java_version: "11"  # Change this value to 8, 11, or 17 as needed
+
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Remove existing Java installation
+      apt:
+        name: "openjdk-*"
+        state: absent
+
+    - name: Install updated Java version
+      apt:
+        name: "openjdk-{{ java_version }}-jdk"
+        state: present
+
+    - name: Set JAVA_HOME environment variable
+      lineinfile:
+        path: /etc/profile.d/java.sh
+        line: "export JAVA_HOME=/usr/lib/jvm/java-{{ java_version }}-openjdk-amd64"
+        state: present
+        create: yes
+
+    - name: Load JAVA_HOME variable
+      shell: source /etc/profile.d/java.sh
+      args:
+        executable: /bin/bash
+
+    - name: Verify Java installation
+      command: java -version
+      register: java_version_output
+
+    - name: Display updated Java version
+      debug:
+        msg: "Java version updated to: {{ java_version_output.stdout }}"
+
