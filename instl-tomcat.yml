@@ -1,0 +1,150 @@
+---
+- name: Install and Configure Tomcat
+  hosts: all
+  become: yes
+  vars:
+    tomcat: 9                                # Specify the desired Tomcat 
+    tomcat_version: 9.0.95                   # Specify the desired Tomcat version
+    tomcat_user: "admin"                     # Admin user for manager/host-manager apps
+    tomcat_password: "admin_password"        # Password for the admin user
+    war_source_path: "/path/to/your.war"     # Local path of the .war file to deploy
+    war_deploy_path: "/opt/tomcat/webapps"   # Tomcat deployment directory
+
+  tasks:
+    - name: Install prerequisites
+      apt:
+        name:
+          - default-jdk
+          - wget
+          - curl
+        state: present
+        update_cache: yes
+
+    - name: Create a tomcat group
+      group:
+        name: tomcat
+
+    - name: Create a tomcat user
+      user:
+        name: tomcat
+        group: tomcat
+        shell: /bin/false
+        home: /opt/tomcat
+
+    - name: Download Tomcat archive
+      get_url:
+        url: "https://dlcdn.apache.org/tomcat/tomcat-{{ tomcat }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: /tmp/apache-tomcat-{{ tomcat_version }}.tar.gz
+
+    - name: Create installation directory
+      file:
+        path: /opt/tomcat
+        state: directory
+        owner: tomcat
+        group: tomcat
+
+    - name: Extract Tomcat archive
+      unarchive:
+        src: /tmp/apache-tomcat-{{ tomcat_version }}.tar.gz
+        dest: /opt/tomcat
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    - name: Set directory permissions
+      file:
+        path: /opt/tomcat
+        state: directory
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
+        recurse: yes
+
+    - name: Set up systemd service for Tomcat
+      copy:
+        content: |
+          [Unit]
+          Description=Apache Tomcat Web Application Container
+          After=network.target
+
+          [Service]
+          Type=forking
+
+          User=tomcat
+          Group=tomcat
+
+          Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+          Environment="CATALINA_PID=/opt/tomcat/temp/tomcat.pid"
+          Environment="CATALINA_HOME=/opt/tomcat"
+          Environment="CATALINA_BASE=/opt/tomcat"
+          Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+          Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+
+          ExecStart=/opt/tomcat/bin/startup.sh
+          ExecStop=/opt/tomcat/bin/shutdown.sh
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/tomcat.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd daemon
+      command: systemctl daemon-reload
+
+    - name: Start and enable Tomcat
+      service:
+        name: tomcat
+        state: started
+        enabled: yes
+
+    - name: Create tomcat-users.xml for admin access to manager and host-manager
+      copy:
+        dest: /opt/tomcat/conf/tomcat-users.xml
+        content: |
+          <?xml version='1.0' encoding='utf-8'?>
+          <tomcat-users>
+            <role rolename="manager-gui"/>
+            <role rolename="admin-gui"/>
+            <user username="{{ tomcat_user }}" password="{{ tomcat_password }}" roles="manager-gui,admin-gui"/>
+          </tomcat-users>
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Allow access to manager app and host-manager from any IP (optional)
+      copy:
+        dest: /opt/tomcat/webapps/manager/META-INF/context.xml
+        content: |
+          <Context antiResourceLocking="false" privileged="true" >
+            <Valve className="org.apache.catalina.valves.RemoteAddrValve"
+              allow="^.*$" />
+          </Context>
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Allow access to host-manager from any IP (optional)
+      copy:
+        dest: /opt/tomcat/webapps/host-manager/META-INF/context.xml
+        content: |
+          <Context antiResourceLocking="false" privileged="true" >
+            <Valve className="org.apache.catalina.valves.RemoteAddrValve"
+              allow="^.*$" />
+          </Context>
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Deploy the .war file to Tomcat
+      copy:
+        src: "{{ war_source_path }}"
+        dest: "{{ war_deploy_path }}"
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Restart Tomcat to load new app
+      service:
+        name: tomcat
+        state: restarted
