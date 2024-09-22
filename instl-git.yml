@@ -1,0 +1,20 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install Git
+      apt:
+        name: git
+        state: present
+
+    - name: Verify Git installation
+      command: git --version
+      register: git_version
+
+    - name: Display Git version
+      debug:
+        msg: "Git version installed: {{ git_version.stdout }}"
