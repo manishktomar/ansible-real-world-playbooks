@@ -1,0 +1,116 @@
+---
+- name: Deploy Tomcat Container
+  hosts: all
+  
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install prerequisites
+      apt:
+        name:
+          - wget
+          - tar
+        state: present
+
+    - name: Create Prometheus user
+      user:
+        name: prometheus
+        shell: /bin/false
+
+    - name: Create directories for Prometheus
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: prometheus
+        group: prometheus
+        mode: '0755'
+      with_items:
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name: Download Prometheus
+      get_url:
+        url: https://github.com/prometheus/prometheus/releases/download/v2.44.0/prometheus-2.44.0.linux-amd64.tar.gz
+        dest: /tmp/prometheus.tar.gz
+
+    - name: Extract Prometheus
+      unarchive:
+        src: /tmp/prometheus.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy Prometheus binaries
+      copy:
+        src: /tmp/prometheus-2.44.0.linux-amd64/prometheus
+        dest: /usr/local/bin/prometheus
+        mode: '0755'
+
+    - name: Copy Promtool binaries
+      copy:
+        src: /tmp/prometheus-2.44.0.linux-amd64/promtool
+        dest: /usr/local/bin/promtool
+        mode: '0755'
+
+    - name: Copy console files
+      copy:
+        src: /tmp/prometheus-2.44.0.linux-amd64/consoles
+        dest: /etc/prometheus/consoles
+        mode: '0755'
+        remote_src: yes
+
+    - name: Copy console library files
+      copy:
+        src: /tmp/prometheus-2.44.0.linux-amd64/console_libraries
+        dest: /etc/prometheus/console_libraries
+        mode: '0755'
+        remote_src: yes
+
+    - name: Set up Prometheus config file
+      copy:
+        content: |
+          global:
+            scrape_interval: 15s
+
+          scrape_configs:
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9091']
+        dest: /etc/prometheus/prometheus.yml
+        owner: prometheus
+        group: prometheus
+        mode: '0644'
+
+    - name: Create Prometheus systemd service
+      copy:
+        content: |
+          [Unit]
+          Description=Prometheus Service
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=prometheus
+          Group=prometheus
+          Type=simple
+          ExecStart=/usr/local/bin/prometheus \
+            --config.file=/etc/prometheus/prometheus.yml \
+            --storage.tsdb.path=/var/lib/prometheus/ \
+            --web.console.templates=/etc/prometheus/consoles \
+            --web.console.libraries=/etc/prometheus/console_libraries
+            --web.listen-address=0.0.0.0:9091
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/prometheus.service
+        mode: '0644'
+
+    - name: Reload systemd to apply new service
+      command: systemctl daemon-reload
+
+    - name: Enable Prometheus service to start on boot
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
