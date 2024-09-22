@@ -1,0 +1,25 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    mysql_root_password: "root_password"  # Change to your desired root password
+    mysql_user: "your_username"            # Change to your desired username
+    mysql_user_password: "user_password"    # Change to your desired user password
+
+  tasks:
+    - name: Update apt package index
+      apt:
+        update_cache: yes
+
+    - name: Install MySQL Server
+      apt:
+        name:
+        - mysql-server
+        - python-mysqldb
+        state: present
+
+    - name: Ensure MySQL is running
+      service:
+        name: mysql
+        state: started
+        enabled: yes
