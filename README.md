@@ -34,5 +34,5 @@ Ansible Real world playbook for Installation, Update and Deploy Container for Ap
 ### Playbook for Update Application:
 | Application &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;	&nbsp;	&nbsp;			         | Playbook Link  				 |
 | ---------------------------------	         | ---------------------------|
-| 1. Update Java version                     | [Code](./update-java-versions.yml) |
+| `1. Update Java version`                  | [Code](./update-java-versions.yml) |
 
