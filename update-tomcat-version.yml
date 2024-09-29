@@ -1,5 +1,5 @@
 ---
-- name: Upgrade Tomcat from 9.0.95 to 10.1.30
+- name: Upgrade Tomcat from 9.0.95 to 10.1.30.
   hosts: all
   become: yes
   vars:
