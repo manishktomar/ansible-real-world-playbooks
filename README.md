@@ -8,6 +8,7 @@ Ansible Real world playbook for Installation, Update and Deploy Container for Ap
 4. Installation Git          [Code](./instl-git.yml)
 5. Installation MySql        [Code](./instl-mysql.yml)
 6. Installation Tomcat       [Code](./instl-tomcat.yml)
+7. Installation Tomcat with Version Prompt [Code](./instl-tomcat-version-prompt.yml)
 
 #### Playbook for Deploy Applications Container:
 1. Deploy Container for Tomcat [Code](./deploy-webapp-tomcat.yml)
