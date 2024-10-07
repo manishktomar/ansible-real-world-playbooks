@@ -1,0 +1,127 @@
+---
+- name: Deploy Tomcat with Version Option
+  hosts: localhost
+  become: yes
+  vars_prompt:
+    - name: "tomcat_version"
+      prompt: "Enter the Tomcat version you want to install (9.0.89, 10.1.24)"
+      private: no
+      
+    - name: "manager_username"
+      prompt: "Enter the Tomcat manager username"
+      private: no
+
+    - name: "manager_password"
+      prompt: "Enter the Tomcat manager password"
+      private: yes
+
+  tasks:
+    - name: Ensure Java is installed
+      apt:
+        name: default-jdk
+        state: present
+
+    - name: Create a tomcat group
+      group:
+        name: tomcat
+
+    - name: Create a tomcat user
+      user:
+        name: tomcat
+        group: tomcat
+        home: /opt/tomcat
+        shell: /bin/false
+
+    - name: Download Tomcat
+      get_url:
+        url: "https://downloads.apache.org/tomcat/tomcat-{{ tomcat_version.split('.')[0] }}/v{{ tomcat_version }}/bin/apache-tomcat-{{ tomcat_version }}.tar.gz"
+        dest: /tmp/apache-tomcat-{{ tomcat_version }}.tar.gz
+
+    - name: Create installation directory
+      file:
+        path: /opt/tomcat1
+        state: directory
+        owner: tomcat
+        group: tomcat
+
+    - name: Extract Tomcat
+      unarchive:
+        src: /tmp/apache-tomcat-{{ tomcat_version }}.tar.gz
+        dest: /opt/tomcat
+        owner: tomcat
+        group: tomcat
+        extra_opts: [--strip-components=1]
+
+    - name: Set permissions on Tomcat directory
+      file:
+        path: /opt/tomcat
+        state: directory
+        recurse: yes
+        owner: tomcat
+        group: tomcat
+
+    - name: Set up systemd service for Tomcat
+      copy:
+        content: |
+          [Unit]
+          Description=Apache Tomcat
+          After=network.target
+
+          [Service]
+          Type=forking
+
+          User=tomcat
+          Group=tomcat
+
+          Environment="JAVA_HOME=/usr/lib/jvm/default-java"
+          Environment="CATALINA_PID=/opt/tomcat/temp/tomcat.pid"
+          Environment="CATALINA_HOME=/opt/tomcat"
+          Environment="CATALINA_BASE=/opt/tomcat"
+          Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+          Environment="JAVA_OPTS=-Djava.awt.headless=true -Djava.security.egd=file:/dev/./urandom"
+
+          ExecStart=/opt/tomcat/bin/startup.sh
+          ExecStop=/opt/tomcat/bin/shutdown.sh
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: /etc/systemd/system/tomcat.service
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Reload systemd to apply the new service
+      command: systemctl daemon-reload
+
+    - name: Start and enable Tomcat service
+      service:
+        name: tomcat
+        state: started
+        enabled: yes
+
+    - name: Copy tomcat-users.xml
+      copy:
+        src: /opt/tomcat/conf/tomcat-users.xml
+        dest: /opt/tomcat/conf/tomcat-users.xml_old
+        
+    - name: Set up Tomcat Manager user
+      copy:
+        content: |
+          <?xml version='1.0' encoding='utf-8'?>
+          <tomcat-users xmlns="http://tomcat.apache.org/xml"
+                        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xsi:schemaLocation="http://tomcat.apache.org/xml tomcat-users.xsd"
+                        version="1.0">
+            <role rolename="manager-gui"/>
+            <role rolename="admin-gui"/>
+            <user username="{{ manager_username }}" password="{{ manager_password }}" roles="manager-gui,admin-gui"/>
+          </tomcat-users>
+        dest: /opt/tomcat/conf/tomcat-users.xml
+        owner: tomcat
+        group: tomcat
+        mode: '0644'
+
+    - name: Restart Tomcat to apply user configuration
+      service:
+        name: tomcat
+        state: restarted
